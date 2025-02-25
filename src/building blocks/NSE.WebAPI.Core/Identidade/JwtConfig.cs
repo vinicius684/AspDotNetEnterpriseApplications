@@ -32,7 +32,7 @@ namespace NSE.WebAPI.Core.Identidade
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             }).AddJwtBearer(bearerOptions =>//add suporte  pra esse tipo específico de token e opções
             {
-                bearerOptions.RequireHttpsMetadata = true;
+                bearerOptions.RequireHttpsMetadata = false;//requerer https para validar ojwt
                 bearerOptions.SaveToken = true;
                 bearerOptions.SetJwksOptions(new JwkOptions(appSettings.AutenticacaoJwksUrl));//olha, vai entender um JWT e pra ententer como ele funciona, vai precisar pegar a url desse endpoint e ir lá consultar chave publica pra entender a validar o Token
                 bearerOptions.MapInboundClaims = false;

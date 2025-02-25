@@ -1,26 +1,32 @@
-#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
+# Acesse https://aka.ms/customizecontainer para saber como personalizar seu contêiner de depuração e como o Visual Studio usa este Dockerfile para criar suas imagens para uma depuração mais rápida.
 
-#Depending on the operating system of the host machines(s) that will build or run the containers, the image specified in the FROM statement may need to be changed.
-#For more information, please see https://aka.ms/containercompat
-
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-nanoserver-1809 AS base
+# Esta fase é usada durante a execução no VS no modo rápido (Padrão para a configuração de Depuração)
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0-nanoserver-1809 AS build
+
+# Esta fase é usada para compilar o projeto de serviço
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["src/services/NSE.Pagamentos.API/NSE.Pagamentos.API.csproj", "src/services/NSE.Pagamentos.API/"]
-RUN dotnet restore "./src/services/NSE.Pagamentos.API/NSE.Pagamentos.API.csproj"
+COPY ["./services/NSE.Pagamentos.API/NSE.Pagamentos.API.csproj", "services/NSE.Pagamentos.API/"]
+COPY ["./building blocks/NSE.Core/NSE.Core.csproj", "building blocks/NSE.WebAPI.Core/"]
+COPY ["./building blocks/NSE.WebAPI.Core/NSE.WebAPI.Core.csproj", "building blocks/NSE.WebAPI.Core/"]
+COPY ["./building blocks/NSE.MessageBus/NSE.MessageBus.csproj", "building blocks/NSE.MessageBus/"]
+RUN dotnet restore "services/NSE.Pagamentos.API/NSE.Pagamentos.API.csproj"
 COPY . .
-WORKDIR "/src/src/services/NSE.Pagamentos.API"
-RUN dotnet build "./NSE.Pagamentos.API.csproj" -c %BUILD_CONFIGURATION% -o /app/build
+WORKDIR "services/NSE.Pagamentos.API"
+RUN dotnet build "NSE.Pagamentos.API.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
+# Esta fase é usada para publicar o projeto de serviço a ser copiado para a fase final
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./NSE.Pagamentos.API.csproj" -c %BUILD_CONFIGURATION% -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "NSE.Pagamentos.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
+# Esta fase é usada na produção ou quando executada no VS no modo normal (padrão quando não está usando a configuração de Depuração)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
